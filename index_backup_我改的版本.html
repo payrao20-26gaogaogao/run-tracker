@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>跑步身体极限计算器 - 跑者无疆</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .calculator {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        #result {
+            margin-top: 20px;
+        }
+
+        #status {
+            margin-top: 20px;
+        }
+
+        #history {
+            margin-top: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        input:focus, select:focus, button:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        #name {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>跑步身体极限计算器 - 跑者无疆</h1>
+        </header>
+
+        <div class="calculator">
+            <h2>身体极限评估</h2>
+
+            <div id="name">跑者姓名：</div>
+            <input type="text" id="name" style="border: none; padding: 0; width: 100%; margin: 0 10px; text-align: center;" placeholder="输入姓名">
+
+            <div id="gender">性别：</div>
+            <select id="gender">
+                <option value="male">男性</option>
+                <option value="female">女性</option>
+            </select>
+
+            <div id="weight">体重（kg）：</div>
+            <input type="number" id="weight" step="0.5" placeholder="输入体重">
+
+            <div id="height">身高（cm）：</div>
+            <input type="number" id="height" placeholder="输入身高">
+
+            <div id="age">年龄：</div>
+            <input type="number" id="age" step="1" placeholder="输入年龄">
+
+            <div id="duration">运动时长（小时）：</div>
+            <input type="number" id="duration" step="0.1" placeholder="输入运动时长">
+
+            <div id="cards">活动卡路里（千卡）：</div>
+            <input type="number" id="cards" step="0.1" placeholder="输入总卡路里">
+
+            <div id="total">总卡路里（千卡）：</div>
+            <input type="number" id="total" step="0.1" placeholder="输入总卡路里">
+
+            <div id="pace">平均配速（分钟/公里）：</div>
+            <input type="number" id="pace" step="0.1" placeholder="输入配速">
+
+            <div id="heartRate">平均心率（次/分钟）：</div>
+            <input type="number" id="heartRate" step="0.1" placeholder="输入心率">
+
+            <div id="steps">步数：</div>
+            <input type="number" id="steps" step="1" placeholder="输入步数">
+
+            <div id="elevationUp">累计上升米数：</div>
+            <input type="number" id="elevationUp" step="1" placeholder="输入累计上升米数">
+
+            <div id="elevationDown">累计下降米数：</div>
+            <input type="number" id="elevationDown" step="1" placeholder="输入累计下降米数">
+
+            <div id="maxHeartRate">
+                最大心率（理论值）：<span id="maxHeartRateValue">0</span>
+            </div>
+
+            <button onclick="calculate()">计算</button>
+
+            <div id="result"></div>
+            <div id="status"></div>
+            <div id="history"></div>
+        </div>
+
+        <script>
+            // 数据库初始化
+            const db = new DateBase('localhost', 'runningData', {
+                username: 'root',
+                password: 'password',
+                charset: 'utf8'
+            });
+
+            // 获取输入值
+            const name = document.getElementById('name').value;
+            const gender = document.getElementById('gender').value === 'male' ? 1 : 0;
+            const weight = parseFloat(document.getElementById('weight').value);
+            const height = parseFloat(document.getElementById('height').value);
+            const age = parseInt(document.getElementById('age').value);
+            const duration = parseFloat(document.getElementById('duration').value);
+            const cards = parseFloat(document.getElementById('cards').value);
+            const total = parseFloat(document.getElementById('total').value);
+            const pace = parseFloat(document.getElementById('pace').value);
+            const heartRate = parseFloat(document.getElementById('heartRate').value);
+            const steps = parseFloat(document.getElementById('steps').value);
+            const elevationUp = parseFloat(document.getElementById('elevationUp').value);
+            const elevationDown = parseFloat(document.getElementById('elevationDown').value);
+
+            // 计算最大心率
+            const maxHeartRate = 220 - age;
+
+            // 验证和初始状态
+            if (name === '') {
+                alert('请填写跑者姓名!');
+                return;
+            }
+
+            // 计算各项指标
+            const heartRatePercentage = (heartRate / maxHeartRate) * 100;
+            const theoreticalMaxPace = 1500 / maxHeartRate;
+            const pacePercentage = (pace / theoreticalMaxPace) * 100;
+            const totalElevation = elevationUp - elevationDown;
+            const elevationPercentage = (totalElevation / duration) * 100;
+            const caloriesConsumed = (cards / total) * 100;
+
+            // 综合计算
+            const result = 0.4 * heartRatePercentage + 0.3 * pacePercentage + 0.2 * (steps / (pace * 1000 / 60)) + 0.1 * elevationPercentage + 0.1 *
+caloriesConsumed;
+            const result = Math.min(result, 100);
+
+            // 更新数据库
+            const runningData = {
+                name: name,
+                gender: gender,
+                weight: weight,
+                height: height,
+                age: age,
+                duration: duration,
+                cards: cards,
+                total: total,
+                pace: pace,
+                heartRate: heartRate,
+                steps: steps,
+                elevationUp: elevationUp,
+                elevationDown: elevationDown,
+                maxHeartRate: maxHeartRate,
+                heartRatePercentage: heartRatePercentage,
+                pacePercentage: pacePercentage,
+                stepsPercentage: (steps / (pace * 1000 / 60)) * 100,
+                elevationPercentage: elevationPercentage,
+                caloriesConsumed: caloriesConsumed,
+                result: result,
+                status: '';
+            };
+
+            db.add(runningData);
+
+            // 显示结果
+            document.getElementById('result').textContent = `身体极限百分比: ` + result.toFixed(1) + '%';
+            document.getElementById('status').textContent = getStatusCode(result);
+
+            // 添加历史记录
+            const historyData = {
+                time: new Date().toLocaleString(),
+                result: result,
+                status: getStatusCode(result)
+            };
+            db.addToHistory(historyData);
+
+            // 清空输入
+            document.getElementById('name').value = '';
+            document.getElementById('gender').value = '';
+            document.getElementById('weight').value = '';
+            document.getElementById('height').value = '';
+            document.getElementById('age').value = '';
+            document.getElementById('duration').value = '';
+            document.getElementById('cards').value = '';
+            document.getElementById('total').value = '';
+            document.getElementById('pace').value = '';
+            document.getElementById('heartRate').value = '';
+            document.getElementById('steps').value = '';
+            document.getElementById('elevationUp').value = '';
+            document.getElementById('elevationDown').value = '';
+
+            // 重做计算
+            calculate();
+        </script>
+
+        <script>
+            // 表格样式
+            const table = document.getElementById('history');
+            table.innerHTML = '';
+
+            table.innerHTML = `<table border="1" style="width: 100%; border-spacing: 1px; padding: 10px; margin: 20px 0;">\
+            <thead>
+                <tr>
+                    <th>时间</th>
+                    <th>身体极限百分比</th>
+                    <th>状态</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>-
+                </td>
+            </tr>
+            </tbody>
+            </table>`;
+        </script>
+
+        <!-- 验证脚本 -->
+        function getStatusCode(percent) {
+            if (percent >= 80) {
+                return '优秀';
+            } else if (percent >= 60) {
+                return '良好';
+            } else if (percent >= 40) {
+                return '一般';
+            } else {
+                return '较差';
+            }
+        }
+    </div>
+</body>
+</html>
